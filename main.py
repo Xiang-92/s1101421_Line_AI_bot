@@ -7,8 +7,13 @@ from langchain_core.messages import HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from configparser import ConfigParser
 import google.generativeai as genai
-from linebot.models import StickerSendMessage
-from linebot.models import LocationSendMessage
+from linebot.models import (
+    TextSendMessage,
+    StickerSendMessage,
+    LocationSendMessage,
+    ImageSendMessage,
+    VideoSendMessage
+)
 from linebot import LineBotApi
 
 app = Flask(__name__)
@@ -16,7 +21,7 @@ app = Flask(__name__)
 HISTORY_FILE = "chat_history.json"
 
 # 儲存對話紀錄
-def save_history(user_input, ai_response):
+def save_history(user_input, ai_response=None, msg_type="text", extra_url=None):
     history = []
     if os.path.exists(HISTORY_FILE):
         with open(HISTORY_FILE, "r", encoding="utf-8") as f:
@@ -24,9 +29,43 @@ def save_history(user_input, ai_response):
                 history = json.load(f)
             except:
                 history = []
-    history.append({"user": user_input, "ai": ai_response})
+
+    if msg_type == "text":
+        entry = {
+            "type": "text",
+            "user": user_input,
+            "ai": ai_response
+        }
+    elif msg_type == "image":
+        entry = {
+            "type": "image",
+            "user": user_input,
+            "ai_image_url": extra_url
+        }
+    elif msg_type == "video":
+        entry = {
+            "type": "video",
+            "user": user_input,
+            "ai_video_url": extra_url
+        }
+    elif msg_type == "location":
+        entry = {
+            "type": "location",
+            "user": user_input,
+            "address": "320桃園市中壢區遠東路135號"
+        }
+    elif msg_type == "sticker":
+        entry = {
+            "type": "sticker",
+            "user": user_input,
+            "sticker_id": "1"
+        }
+
+    history.append(entry)
+
     with open(HISTORY_FILE, "w", encoding="utf-8") as f:
         json.dump(history, f, ensure_ascii=False, indent=2)
+
 
 # 查詢對話紀錄
 @app.route("/history", methods=["GET"])
@@ -95,20 +134,15 @@ def webhook():
     try:
         for event in body['events']:
             if event['type'] == 'message' and event['message']['type'] == 'text':
-                user_input = event['message']['text']
+                user_input = event['message']['text'].strip().lower()
                 reply_token = event['replyToken']
 
-                # 如果使用者輸入「貼圖」
-                if user_input.strip().lower() == "貼圖":
-                    sticker = StickerSendMessage(
-                        package_id='1',
-                        sticker_id='1'
-                    )
+                if user_input == "貼圖":
+                    sticker = StickerSendMessage(package_id='1', sticker_id='1')
                     line_bot_api.reply_message(reply_token, sticker)
                     return "OK"
 
-                # 如果使用者輸入「location」
-                elif user_input.strip().lower() == "location":
+                elif user_input == "location":
                     location_msg = LocationSendMessage(
                         title="元智大學",
                         address="320桃園市中壢區遠東路135號",
@@ -116,13 +150,34 @@ def webhook():
                         longitude=121.267625
                     )
                     line_bot_api.reply_message(reply_token, location_msg)
+                    save_history(user_input, msg_type="location")
                     return "OK"
 
-                # 否則用 Gemini 回覆
+                elif user_input == "圖片":
+                    image_url = "https://s.yimg.com/ny/api/res/1.2/v2ics1Z_DbOFT6wrjTaxGw--/YXBwaWQ9aGlnaGxhbmRlcjt3PTY0MDtoPTQyNw--/https://s.yimg.com/os/creatr-uploaded-images/2022-06/3757bb00-eca8-11ec-bf3f-7c2b69f1b53a"
+                    image_msg = ImageSendMessage(
+                        original_content_url=image_url,
+                        preview_image_url="https://s.yimg.com/ny/api/res/1.2/v2ics1Z_DbOFT6wrjTaxGw--/YXBwaWQ9aGlnaGxhbmRlcjt3PTY0MDtoPTQyNw--/https://s.yimg.com/os/creatr-uploaded-images/2022-06/3757bb00-eca8-11ec-bf3f-7c2b69f1b53a"
+                    )
+                    line_bot_api.reply_message(reply_token, image_msg)
+                    save_history(user_input, msg_type="image", extra_url=image_url)
+                    return "OK"
+
+                elif user_input == "影片":
+                    video_url="https://videos.pexels.com/video-files/12156088/12156088-hd_1920_1080_24fps.mp4"
+                    video_msg = VideoSendMessage(
+                        original_content_url=video_url,
+                        preview_image_url="https://i.imgur.com/3Q3Z8Ja.jpg"
+                    )
+                    line_bot_api.reply_message(reply_token, video_msg)
+                    save_history(user_input, msg_type="video", extra_url=video_url)
+                    return "OK"
+
                 else:
                     ai_response = generate_gemini_reply(user_input)
                     save_history(user_input, ai_response)
                     reply_message(reply_token, ai_response)
+                    return "OK"
 
         return "OK"
 
