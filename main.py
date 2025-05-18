@@ -84,7 +84,7 @@ def delete_history():
         os.remove(HISTORY_FILE)
     return {"status": "deleted"}
 
-# 👉 將這兩個資訊填入你的實際值
+
 CHANNEL_ACCESS_TOKEN = 'kOx9PJ6WpRvQRK5xnsgMKyQi3r/sum++wJKHCqjcNWwEr5VJQBO8DcMpKqytz1DIdSo22lciUH1Va3KnL3kUT8iia05meCSGyzrSVhXw+6TLFuPGduCqtsSUQhhhFFO/K2sGzYIiv0ch4NI0yjkikAdB04t89/1O/w1cDnyilFU='
 #GEMINI_API_KEY = 'AIzaSyAb5hL0EPmBnpPOU7pI5KzTX3paZQ9Lla8'
 
