@@ -1,2 +1,6 @@
 Flask
 requests
+google-generativeai
+langchain
+langchain-google-genai
+line-bot-sdk
